@@ -261,16 +261,16 @@ class MicroblogAPI extends IndexAPI {
     await this._save()
   }
 
-  async listFeed (query) {
+  listFeed (query) {
     query = new Schemas.MicroblogIndexFeedQuery(query)
-    var {after, before, includeContent, offset, limit, reverse} = query
+    var {after, before, offset, limit, reverse} = query
 
     var results = this._state.feed.slice()
 
     if (before || after) {
       results = results.filter(meta => {
-        if (before && meta.createdAt >= before) return false
-        if (after && meta.createdAt <= after) return false
+        if (before && meta.numid >= before) return false
+        if (after && meta.numid <= after) return false
         return true
       })
     }
@@ -280,17 +280,10 @@ class MicroblogAPI extends IndexAPI {
     else if (offset) results = results.slice(offset)
     else if (limit) results = results.slice(0, limit)
 
-    if (includeContent) {
-      let users = {}
-      for (let i = 0; i < results.length; i++) {
-        let result = results[i]
-        let user = users[result.author]
-        user = users[result.author] = user || new User(result.author)
-        results[i] = Object.assign({}, {
-          post: await user.microblog.get(result.filename).catch(ignoreNotFound)
-        }, result)
-      }
-    }
+    // For compatibility when await listFeed is still lingering around anywhere.
+    let p = Promise.resolve(results)
+    results.then = (cb) => p.then(cb)
+    results.catch = (cb) => p.catch(cb)
 
     return results
   }

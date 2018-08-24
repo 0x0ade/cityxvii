@@ -2,7 +2,7 @@
 
 import {JSONParseError} from './errors.js'
 import {toUrl, toDomain, ignoreNotFound} from './util.js'
-import { User } from './user.js';
+import {User} from './user.js'
 
 // base class
 // 
@@ -43,11 +43,12 @@ class Schema {
   then (onFulfillment, onRejection) {
     return this._fetch().then(input => {
       this.update(input)
+      Object.defineProperty(this, 'isFetched', {enumerable: false, configurable: true, value: true})
+
+      // Fetched data cannot be awaited, as it'd immediately retrigger in an endless loop.
       let result = this._new()
-      // Fetched data cannot be awaited in a loop.
       Object.defineProperty(result, '_source', {enumerable: false, value: this})
       Object.defineProperty(result, 'then', {enumerable: false, value: undefined})
-      Object.defineProperty(this, 'isFetched', {enumerable: false, configurable: true, value: true})
       Object.defineProperty(result, 'isFetched', {enumerable: false, configurable: true, value: true})
       return result
     }).then(onFulfillment, onRejection)/*.catch(e => {
@@ -147,10 +148,10 @@ export class Profile extends Schema {
     
     // If timestampLast isn't given, use mtime.
     if (!res.timestampLast) {
-      res.timestampLast = (await new User(this.getOrigin()).getInfo()).mtime;
+      res.timestampLast = (await new User(this.getOrigin()).getInfo()).mtime
     }
     
-    return res;
+    return res
   }
 
   update (input) {
@@ -361,7 +362,6 @@ export class MicroblogIndexFeedQuery extends Schema {
 
     this.after = this.get('after', 'number', null)
     this.before = this.get('before', 'number', null)
-    this.includeContent = this.get('includeContent', 'boolean', true)
     this.offset = this.get('offset', 'number', null)
     this.limit = this.get('limit', 'number', null)
     this.reverse = this.get('reverse', 'boolean', false)
