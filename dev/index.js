@@ -5,6 +5,7 @@ import {User} from './user.js'
 import * as Schemas from './schemas.js'
 
 const POST_FILE_PATH_REGEX = /^\/posts\/[^\/]+\.json$/i
+const BACKSLASH_FILE_PATH_REGEX = /\\/g
 
 // exported api
 // =
@@ -36,6 +37,15 @@ export class Index extends DatArchive {
     await Promise.all([
       this.microblog.setup(),
       this.social.setup()
+    ])
+  }
+
+  async reset () {
+    this._state = new Schemas.CitizenIndex({}, this.getIndexUrl())
+    await this._save()
+    await Promise.all([
+      this.microblog.reset(),
+      this.social.reset()
     ])
   }
 
@@ -86,7 +96,7 @@ export class Index extends DatArchive {
     var changes
     if (previousVersion === 0) {
       // No information present. To speed things up, let's just readdir / recursively.
-      changes = (await user.readdir("/", {recursive: true})).map(path => ({path: path, type: "put"}))
+      changes = (await user.readdir("/", {recursive: true})).map(path => ({path: '/' + path.replace(BACKSLASH_FILE_PATH_REGEX, '/'), type: "put"}))
     } else {
       changes = await user.history({start: previousVersion, end: version + 1})
     }
@@ -100,7 +110,7 @@ export class Index extends DatArchive {
 
     // update crawl state
     this._state.sites[domain] = {key, version, name: profile.name || ''}
-    this._state.profiles[domain] = profile.cached || profile
+    this._state.profiles[domain] = profile.getSynced ? profile.getSynced() : profile
     await this._save()
   }
 
@@ -181,6 +191,11 @@ class MicroblogAPI extends IndexAPI {
     // TODO watch for changes to the index in other tabs
   }
 
+  async reset () {
+    this._state = new Schemas.MicroblogIndex({}, this.getIndexUrl())
+    await this._save()
+  }
+
   async _load () {
     try {
       this._state = new Schemas.MicroblogIndex(await this.archive.readFile('/index/citizen/microblog.json'), this.getIndexUrl())
@@ -220,7 +235,7 @@ class MicroblogAPI extends IndexAPI {
 
       // feed index
       if (opts.indexes.microblog.feed) {
-        this._state.feed.push(Schemas.MicroblogIndex.postToFeedItem(user, filename)) // add / readd
+        this._state.feed.push(Schemas.MicroblogIndex.postToFeedItem(domain, filename)) // add / readd
       }
     }
     this._state.feed.sort((a, b) => b.createdAt - a.createdAt) // sort by timestamp
@@ -235,11 +250,6 @@ class MicroblogAPI extends IndexAPI {
     // remove all previously indexed data
     let origin = `dat://${domain}/`
     this._state.feed = this._state.feed.filter(post => post.author !== domain)
-    for (let threadUrl in this._state.threads) {
-      this._state.threads[threadUrl] = this._state.threads[threadUrl].filter(url => {
-        return !url.startsWith(origin)
-      })
-    }
 
     // write updated state
     await this._save()
@@ -288,47 +298,6 @@ class MicroblogAPI extends IndexAPI {
     }
     return promise
   }
-
-  async getThread (url) {
-    // read the given post
-    url = toUrl(url)
-    var post = await this.getPost(url)
-
-    // determine the thread root
-    var threadRootUrl = post.threadRoot || url
-
-    // get the replies
-    var threadUrls = (this._state.threads[threadRootUrl] || []).slice()
-    if (threadUrls.indexOf(threadRootUrl) === -1) {
-      // add the thread root
-      threadUrls.unshift(threadRootUrl)
-    }
-
-    // read the posts
-    var threadPosts = await Promise.all(threadUrls.map(url => this.getPost(url, {allowNotFound: true})))
-
-    // create a map for fast lookup by url
-    var threadPostsByUrl = {}
-    for (let post of threadPosts) {
-      if (post) {
-        threadPostsByUrl[post.url] = post
-      }
-    }
-
-    // create a tree-structure by populating parent & children pointers
-    for (let post of threadPosts) {
-      let parent = post.threadParent ? threadPostsByUrl[post.threadParent] : undefined
-      post.parent = parent
-      post.root = threadRootUrl && post.url !== threadRootUrl ? threadPostsByUrl[threadRootUrl] : undefined
-      if (parent) {
-        parent.replies = parent.replies || []
-        parent.replies.push(post)
-      }
-    }
-
-    // return the target record
-    return threadPostsByUrl[url]
-  }
 }
 
 class SocialAPI extends IndexAPI {
@@ -344,6 +313,11 @@ class SocialAPI extends IndexAPI {
   async setup () {
     await this._load()
     // TODO watch for changes to the index in other tabs
+  }
+
+  async reset () {
+    this._state = new Schemas.SocialIndex({}, this.getIndexUrl())
+    await this._save()
   }
 
   async _load () {

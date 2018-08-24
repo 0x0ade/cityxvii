@@ -21,6 +21,7 @@ class Schema {
     if (!url) {
       // URL-less data cannot be awaited.
       Object.defineProperty(this, 'then', {enumerable: false, value: undefined})
+      Object.defineProperty(this, '_fetched', {enumerable: false, configurable: true, value: true})
     }
 
     this.update(input)
@@ -45,6 +46,8 @@ class Schema {
       // Fetched data cannot be awaited in a loop.
       Object.defineProperty(result, '_source', {enumerable: false, value: this})
       Object.defineProperty(result, 'then', {enumerable: false, value: undefined})
+      Object.defineProperty(this, '_fetched', {enumerable: false, configurable: true, value: true})
+      Object.defineProperty(result, '_fetched', {enumerable: false, configurable: true, value: true})
       return result
     }).then(onFulfillment, onRejection)/*.catch(e => {
       console.error(this.constructor, this._url)
@@ -56,8 +59,12 @@ class Schema {
     return this.then(res => res).catch(onRejection)
   }
 
-  get cached () {
+  getSynced () {
     return this._source || this
+  }
+
+  isFetched () {
+    return this._fetched || false
   }
 
   get (attr, type, fallback) {
@@ -89,6 +96,31 @@ function _get (obj, attr, type, fallback) {
   var value = obj[attr]
   if (typeof value === type) return value
   return fallback
+}
+
+function _feedItem (obj) {
+  Object.defineProperty(obj, "url", {
+    configurable: true,
+    enumerable: false,
+    get() {
+      return `dat://${obj.author}/posts/${obj.filename}`
+    }
+  })
+  Object.defineProperty(obj, "id", {
+    configurable: true,
+    enumerable: false,
+    get() {
+      return obj.filename.slice(0, -5)
+    }
+  })
+  Object.defineProperty(obj, "numid", {
+    configurable: true,
+    enumerable: false,
+    get() {
+      return parseInt(obj.id) || parseInt(obj.id, 36)
+    }
+  })
+  return obj
 }
 
 // exported api
@@ -221,7 +253,6 @@ export class MicroblogIndex extends Schema {
     super.update(input)
 
     this.feed = MicroblogIndex.toFeed(this._input.feed)
-    this.threads = MicroblogIndex.toThreads(this._input.threads)
   }
 
   static toFeed (feed) {
@@ -233,13 +264,10 @@ export class MicroblogIndex extends Schema {
       if (!post || typeof post !== 'object') return false
       if (!post.author || typeof post.author !== 'string') return false
       if (!post.filename || typeof post.filename !== 'string') return false
-      if (!post.createdAt || typeof post.createdAt !== 'number') return false
-      return {
+      return _feedItem({
         author: post.author,
         filename: post.filename,
-        createdAt: post.createdAt,
-        threadRoot: typeof post.threadRoot === 'string' ? post.threadRoot : false
-      }
+      })
     })
     return feed.filter(Boolean)
   }
@@ -258,15 +286,11 @@ export class MicroblogIndex extends Schema {
     return res
   }
 
-  static postToFeedItem (user, filename) {
-    let id = filename.slice(0, -5)
-    return {
-      url: `${user.url}/posts/${filename}`,
-      author: user.url,
-      filename: filename,
-      id: id,
-      numid: parseInt(id) || parseInt(id, 36),
-    }
+  static postToFeedItem (domain, filename) {
+    return _feedItem({
+      author: domain,
+      filename: filename
+    })
   }
 }
 

@@ -25,6 +25,8 @@ Rotonde needs to be able to easily access some basic information about portals o
 
 Instead of fetching every post upfront, Rotonde fetches posts when they're needed. The only "metadata" required is the ID.
 
+Note that this removes all thread-related functionality from CityXVII, as the thread's children cannot be determined without fetching every post's root ahead of time.
+
 ### Support for Rotonde-specific deviations
 
 Rotonde requires a few extensions which aren't part of the vanilla Citizen schemas.
@@ -60,6 +62,8 @@ await user.microblog.remove(id)
 var index = new Citizen.Index(url)
 await index.setup()
 
+await index.reset()
+
 // crawler controls
 
 await index.crawlSite(url, {
@@ -80,11 +84,14 @@ index.listProfiles()
 
 // microblog index
 
+await index.microblog.reset() // can desync - reset index instead!
+
 await index.microblog.listFeed({..})
 await index.microblog.getPost(url)
-await index.microblog.getThread(url)
 
 // social index
+
+await index.social.reset() // can desync - reset index instead!
 
 await index.social.listFollowers(url)
 await index.social.listFriends(url)
@@ -167,12 +174,11 @@ Metadata regarding a previously-indexed site.
 
 ### MicroblogIndex
 
-A combined view of multiple microblogs. Provides a feed view and thread pointers.
+A combined view of multiple microblogs. Provides a feed view.
 
 | field | type | description |
 |-|-|-|
 | `feed` | Array of MicroblogIndexFeedPost | The indexed list of posts, ordered into a merged feed view. |
-| `threads` | Object of url => Array of urls | A map of the known URLs which are replies to a given url. Generated from `threadRoot`. |
 
 ### MicroblogIndexFeedPost
 
