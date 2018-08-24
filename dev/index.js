@@ -59,6 +59,9 @@ export class Index extends DatArchive {
   }
 
   async _save () {
+    if (!this.isEditable) {
+      return
+    }
     return this.writeFile('/index/citizen.json', JSON.stringify(this._state))    
   }
 
@@ -206,6 +209,9 @@ class MicroblogAPI extends IndexAPI {
   }
 
   async _save () {
+    if (!this.archive.isEditable) {
+      return
+    }
     return this.archive.writeFile('/index/citizen/microblog.json', JSON.stringify(this._state))    
   }
 
@@ -330,6 +336,9 @@ class SocialAPI extends IndexAPI {
   }
 
   async _save () {
+    if (!this.archive.isEditable) {
+      return
+    }
     return this.archive.writeFile('/index/citizen/social.json', JSON.stringify(this._state))    
   }
 
