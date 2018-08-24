@@ -13,6 +13,24 @@ import * as Citizen from 'dat://cityxvii.hashbase.io/dev/api.js'
  - [Todos](./todos.md)
  - [Tests](dat://testify.hashbase.io/?test_url=dat://cityxvii.hashbase.io/dev/test/index.js)
 
+## Rotonde-centric changes
+
+### Lazy-load and index profiles
+
+Profiles should be able to be lazily loaded / updated, with sane fallbacks provided before the content has been fetched. Yet at the same time, it should blend in well enough with the existing site indexing.
+
+Rotonde needs to be able to easily access some basic information about portals outside of the usual social circle immediately.
+
+### Passively index posts
+
+Instead of fetching every post upfront, Rotonde fetches posts when they're needed. The only "metadata" required is the ID.
+
+### Support for Rotonde-specific deviations
+
+Rotonde requires a few extensions which aren't part of the vanilla Citizen schemas.
+
+_Note:_ At the moment, there is no support for those extensions. Support for this will be provided shortly.
+
 ## Citizen.User API
 
 ```js
