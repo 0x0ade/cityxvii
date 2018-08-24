@@ -92,8 +92,7 @@ class Schema {
 
 function _get (obj, attr, type, fallback) {
   var value = obj[attr]
-  if (type && typeof value === type) return value
-  return fallback
+  return (!type || typeof value === type) ? value : fallback
 }
 
 function _feedItem (obj) {
