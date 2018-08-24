@@ -133,7 +133,7 @@ export class Profile extends Schema {
       try {
         var r = await fetch(url)
         if (r.ok) {
-          return r.json()
+          return await r.json()
         }
       } catch (e) {
         ignoreNotFound(e)

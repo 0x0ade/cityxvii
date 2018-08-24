@@ -156,8 +156,19 @@ class MicroblogAPI extends UserAPI {
 
   async get (filename) {
     // read file
-    var post = await this.user.readFile('/posts/' + filename)
-    return new Schemas.MicroblogPost(post, this.getPostUrl(filename))
+
+    // var post = await this.user.readFile('/posts/' + filename)
+    // return new Schemas.MicroblogPost(post, this.getPostUrl(filename))
+
+    // fetch makes use of the browser's cache
+    var url = this.getPostUrl(filename)
+    var r = await fetch(url)
+    if (!r.ok) {
+      let e = new Error(r.statusText)
+      e.notFound = r.status === 404
+      throw e
+    }
+    return new Schemas.MicroblogPost(await r.json(), url)
   }
 
   async add (details) {
