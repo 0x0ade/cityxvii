@@ -1,6 +1,6 @@
 # CityXVII
 
-A rotonde-centric implementation of the Citizen social web API for beaker/dat applications. Requires a Web browser which supports the Beaker/Dat stack (e.g. [Beaker browser](https://beakerbrowser.com)).
+A rotonde-centric fork of the Citizen social web API for beaker/dat applications. Requires a Web browser which supports the Beaker/Dat stack (e.g. [Beaker browser](https://beakerbrowser.com)).
 
 ```js
 // import the current dev build
@@ -11,7 +11,6 @@ import * as Citizen from 'dat://cityxvii.hashbase.io/dev/api.js'
 ```
 
  - [Todos](./todos.md)
- - [Tests](dat://testify.hashbase.io/?test_url=dat://cityxvii.hashbase.io/dev/test/index.js)
 
 ## Rotonde-centric changes
 
@@ -29,9 +28,7 @@ Note that this removes all thread-related functionality from CityXVII, as the th
 
 ### Support for Rotonde-specific deviations
 
-Rotonde requires a few extensions which aren't part of the vanilla Citizen schemas.
-
-_Note:_ At the moment, there is no support for those extensions. Support for this will be provided shortly.
+Rotonde requires a few extensions which aren't part of the vanilla Citizen schemas. While they could be handled outside of Citizen, having them inside of Citizen 
 
 ## Citizen.User API
 
