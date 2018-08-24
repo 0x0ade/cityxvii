@@ -92,7 +92,7 @@ class Schema {
 
 function _get (obj, attr, type, fallback) {
   var value = obj[attr]
-  if (typeof value === type) return value
+  if (type && typeof value === type) return value
   return fallback
 }
 
