@@ -146,7 +146,10 @@ export class Index extends DatArchive {
     var i = -1
     var result = []
     for (let domain in this._state.profiles) {
-      result[++i] = this._state.profiles[domain]
+      let profile = this._state.profiles[domain]
+      if (!profile.url)
+        continue
+      result[++i] = profile
     }
     return result
   }
@@ -155,7 +158,7 @@ export class Index extends DatArchive {
     domain = toDomain(domain)
     domain = ((domain in this._state.sites) ? this._state.sites[domain].key : null) || domain
     var profile = this._state.profiles[domain]
-    if (!profile) {
+    if (!profile || !profile.url) {
       this._state.profiles[domain] = profile = new Schemas.Profile(null, domain)
     }
     return profile
