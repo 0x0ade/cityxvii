@@ -1,17 +1,17 @@
-# Citizen
+# CityXVII
 
-A social web API for beaker/dat applications. Requires a Web browser which supports the Beaker/Dat stack (e.g. [Beaker browser](https://beakerbrowser.com)).
+A rotonde-centric implementation of the Citizen social web API for beaker/dat applications. Requires a Web browser which supports the Beaker/Dat stack (e.g. [Beaker browser](https://beakerbrowser.com)).
 
 ```js
 // import the current dev build
-import * as Citizen from 'dat://citizen.hashbase.io/dev/api.js'
+import * as Citizen from 'dat://cityxvii.hashbase.io/dev/api.js'
 
 // Citizen.User
 // Citizen.Index
 ```
 
  - [Todos](./todos.md)
- - [Tests](dat://testify.hashbase.io/?test_url=dat://citizen.hashbase.io/dev/test/index.js)
+ - [Tests](dat://testify.hashbase.io/?test_url=dat://cityxvii.hashbase.io/dev/test/index.js)
 
 ## Citizen.User API
 
@@ -19,7 +19,7 @@ import * as Citizen from 'dat://citizen.hashbase.io/dev/api.js'
 var user = new Citizen.User(url)
 await user.setup()
 
-await user.getProfile()
+(await) user.getProfile()
 await user.setProfile({name, bio})
 await user.setAvatar({data, format}) // not yet implemented
 
@@ -58,6 +58,8 @@ await index.crawlSite(url, {
 await index.uncrawlSite(url)
 index.listCrawledSites()
 index.getCrawledSite(domain)
+index.listProfiles()
+(await) index.getProfile(domain)
 
 // microblog index
 

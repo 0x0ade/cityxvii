@@ -54,8 +54,8 @@ export default function (test) {
     var post1 = await user.microblog.add({text: 'Hello world'})
     var post2 = await user.microblog.add({text: 'Post 2'})
     var post3 = await user.microblog.add({text: 'Post 3'})
-    var post1reply1 = await user.microblog.add({text: 'Reply 1', threadRoot: post1.getUrl()})
-    var post1reply2 = await user.microblog.add({text: 'Reply 2', threadParent: post1.getUrl()})
+    var post1reply1 = await user.microblog.add({text: 'Reply 1', threadRoot: post1.url})
+    var post1reply2 = await user.microblog.add({text: 'Reply 2', threadParent: post1.url})
     var post1reply1reply1 = await user.microblog.add({text: 'Reply 1 Reply 1', threadRoot: post1, threadParent: post1reply1})
   })
 
@@ -70,7 +70,7 @@ export default function (test) {
       { type: 'text', text: 'Reply 1 Reply 1', hasThreadRoot: true, hasThreadParent: true, hasCreatedAt: true }
     ], 'list() reads correctly')
     for (let post of postsList) {
-      t.assert(post.getUrl().startsWith(user.url), 'Has correct url')
+      t.assert(post.url.startsWith(user.url), 'Has correct url')
     }
   })
 
@@ -85,7 +85,7 @@ export default function (test) {
       { type: 'text', text: '', threadRoot: false, threadParent: false, createdAt: 0 }
     ], 'list() reads correctly')
     for (let post of postsList) {
-      t.assert(post.getUrl().startsWith(user.url), 'Has correct url')
+      t.assert(post.url.startsWith(user.url), 'Has correct url')
     }
   })
 

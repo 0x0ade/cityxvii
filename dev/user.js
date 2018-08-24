@@ -21,10 +21,6 @@ export class User extends DatArchive {
     return this.url + '/profile.json'
   }
 
-  getAvatarUrl () {
-    return this.url + '/avatar.png'
-  }
-
   async setup () {
     var info = await this.getInfo()
     if (!info.isOwner) {
@@ -35,9 +31,7 @@ export class User extends DatArchive {
     ])
   }
 
-  async getProfile () {
-    // read file
-    var profile = await this.readFile('/profile.json').catch(ignoreNotFound)
+  getProfile () {
     return new Schemas.Profile(profile, this.getProfileUrl())
   }
 

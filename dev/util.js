@@ -4,9 +4,6 @@ export function toUrl (v) {
   if (v && typeof v.url === 'string') {
     return v.url
   }
-  if (v && typeof v.getUrl === 'function') {
-    return v.getUrl()
-  }
   if (typeof v === 'string') {
     if (v.indexOf('://') === -1) {
       v = 'dat://' + v
@@ -40,10 +37,13 @@ export async function ensureFolderExists (archive, path) {
 }
 
 export function ignoreNotFound (e) {
-  if (e.notFound) {
+  if (e.notFound || e.status === 404) {
     return null
   }
-  throw e
+  if (e instanceof Error) {
+    throw e
+  }
+  return e
 }
 
 export function deepClone (v) {

@@ -1,6 +1,7 @@
 /* globals URL */
 
 import {JSONParseError} from './errors.js'
+import {ignoreNotFound} from './util.js'
 
 // base class
 // 
@@ -16,7 +17,43 @@ class Schema {
       }
     }
     Object.defineProperty(this, '_url', {enumerable: false, value: url ? new URL(url) : url})
-    Object.defineProperty(this, '_input', {enumerable: false, value: input || {}})
+    
+    if (!url) {
+      // URL-less data cannot be awaited.
+      Object.defineProperty(this, 'then', {enumerable: false, value: undefined})
+    }
+
+    this.update(input)
+  }
+
+  update (input) {
+    Object.defineProperty(this, '_input', {enumerable: false, configurable: true, value: input || {}})
+  }
+
+  _new () {
+    return new this.constructor(this._input, this._url)
+  }
+
+  then (onFulfillment, onRejection) {
+    return fetch(this._url).then(ignoreNotFound, ignoreNotFound).then(r => r ? r.json() : r).then(input => {
+      this.update(input)
+      let result = this._new()
+      // Fetched data cannot be awaited in a loop.
+      Object.defineProperty(result, '_source', {enumerable: false, value: this})
+      Object.defineProperty(result, 'then', {enumerable: false, value: undefined})
+      return result
+    }).then(onFulfillment, onRejection).catch(e => {
+      console.error(this.constructor, this._url);
+      throw e;
+    })
+  }
+
+  catch (onRejection) {
+    return this.then(res => res).catch(onRejection)
+  }
+
+  get cached () {
+    return this._source || this
   }
 
   get (attr, type, fallback) {
@@ -39,7 +76,7 @@ class Schema {
     return this.getPath().split('/').slice(-1)[0]
   }
 
-  getUrl () {
+  get url () {
     return this._url ? this._url.toString() : ''
   }
 }
@@ -56,9 +93,19 @@ function _get (obj, attr, type, fallback) {
 export class Profile extends Schema {
   constructor (input, meta) {
     super(input, meta)
+  }
 
-    this.name = this.get('name', 'string', '')
+  getAvatarUrl () {
+    return this.url + '/' + this.avatar
+  }
+
+  update (input) {
+    super.update(input)
+
+    var domain = this.getHostname()
+    this.name = this.get('name', 'string', domain.length > 16 ? domain.substr(0, 8) + '..' + domain.substr(domain.length - 4) : domain)
     this.bio = this.get('bio', 'string', '')
+    this.avatar = this.get('avatar', 'string', 'avatar.png')
     this.follows = Profile.toProfileFollows(this._input.follows)
   }
 
@@ -82,6 +129,10 @@ export class Profile extends Schema {
 export class MicroblogPost extends Schema {
   constructor (input, meta) {
     super(input, meta)
+  }
+
+  update (input) {
+    super.update(input)
 
     this.type = this.get('type', 'string', 'text')
     this.text = this.get('text', 'string', '')
@@ -94,8 +145,13 @@ export class MicroblogPost extends Schema {
 export class CitizenIndex extends Schema {
   constructor (input, meta) {
     super(input, meta)
+  }
+
+  update (input) {
+    super.update(input)
 
     this.sites = CitizenIndex.toSites(this._input.sites)
+    this.profiles = CitizenIndex.toProfiles(this._input.profiles)
   }
 
   static toSites (sites) {
@@ -116,11 +172,31 @@ export class CitizenIndex extends Schema {
     }
     return res
   }
+
+  static toProfiles (profiles) {
+    if (!profiles || typeof profiles !== 'object' || Array.isArray(profiles)) {
+      return {}
+    }
+
+    var res = {}
+    for (let domain in profiles) {
+      let profile = profiles[domain]
+      if (!profile || typeof profile !== 'object') continue
+      if (typeof profile.name !== 'string') continue
+      if (typeof profile.bio !== 'string') continue
+      res[domain] = new Profile(profile, 'dat://' + domain + '/profile.json')
+    }
+    return res
+  }
 }
 
 export class MicroblogIndex extends Schema {
   constructor (input, meta) {
     super(input, meta)
+  }
+
+  update (input) {
+    super.update(input)
 
     this.feed = MicroblogIndex.toFeed(this._input.feed)
     this.threads = MicroblogIndex.toThreads(this._input.threads)
@@ -173,6 +249,10 @@ export class MicroblogIndex extends Schema {
 export class SocialIndex extends Schema {
   constructor (input, meta) {
     super(input, meta)
+  }
+
+  update (input) {
+    super.update(input)
 
     this.followers = SocialIndex.toFollowers(this._input.followers)
   }
@@ -193,8 +273,8 @@ export class SocialIndex extends Schema {
 }
 
 export class MicroblogPostsQuery extends Schema {
-  constructor (input, meta) {
-    super(input, meta)
+  constructor (input) {
+    super(input)
 
     this.offset = this.get('offset', 'number', 0)
     this.limit = this.get('limit', 'number')
@@ -211,8 +291,8 @@ export class MicroblogPostsQuery extends Schema {
 }
 
 export class CrawlOpts extends Schema {
-  constructor (input, meta) {
-    super(input, meta)
+  constructor (input) {
+    super(input)
 
     this.indexes = this.get('indexes', 'object', {})
     this.indexes.microblog = _get(this.indexes, 'microblog', 'object', {})
@@ -224,8 +304,8 @@ export class CrawlOpts extends Schema {
 }
 
 export class MicroblogIndexFeedQuery extends Schema {
-  constructor (input, meta) {
-    super(input, meta)
+  constructor (input) {
+    super(input)
 
     this.after = this.get('after', 'number', null)
     this.before = this.get('before', 'number', null)

@@ -57,9 +57,13 @@ export class Index extends DatArchive {
     var user = new User(url)
     var domain = user.getDomainName()
     var siteState = this._state.sites[domain]
+    var profileState = this._state.profiles[domain]
 
     if (!siteState) {
       siteState = this._state.sites[domain] = {key: '', name: '', version: 0}
+    }
+    if (!profileState) {
+      profileState = this._state.profiles[domain] = new Schemas.Profile(null, 'dat://' + domain + '/profile.json')
     }
     
     var key = await DatArchive.resolveName(domain)
@@ -73,22 +77,30 @@ export class Index extends DatArchive {
         this.social.uncrawlSite(user)
       ])
       siteState = this._state.sites[domain] = {key, name: '', version: 0}
+      profileState = this._state.profiles[domain] = new Schemas.Profile(null, 'dat://' + domain + '/profile.json')
     }
 
     // index up to current version
     var previousVersion = siteState && typeof siteState.version === 'number' ? siteState.version : 0
     var {version} = await user.getInfo()
-    var changes = await user.history({start: previousVersion, end: version + 1})
+    var changes
+    if (previousVersion === 0) {
+      // No information present. To speed things up, let's just readdir / recursively.
+      changes = (await user.readdir("/", {recursive: true})).map(path => ({path: path, type: "put"}))
+    } else {
+      changes = await user.history({start: previousVersion, end: version + 1})
+    }
     await Promise.all([
       this.microblog.crawlSite(user, changes, opts),
       this.social.crawlSite(user, changes, opts)
     ])
 
-    // fetch latest username
+    // fetch latest profile
     var profile = await user.getProfile().catch(e => ({}))
 
     // update crawl state
     this._state.sites[domain] = {key, version, name: profile.name || ''}
+    this._state.profiles[domain] = profile.cached || profile
     await this._save()
   }
 
@@ -104,6 +116,7 @@ export class Index extends DatArchive {
 
     // update crawl state
     delete this._state.sites[domain]
+    delete this._state.profiles[domain]
     await this._save()
   }
 
@@ -113,7 +126,25 @@ export class Index extends DatArchive {
 
   getCrawledSite (domain) {
     domain = toDomain(domain)
-    return (domain in this._state.sites) ? deepClone(this._state.sites[domain]) : {key: '', name: '', version: 0}
+    return (domain in this._state.sites) ? this._state.sites[domain] : {key: '', name: '', version: 0}
+  }
+
+  listProfiles () {
+    var i = -1;
+    var result = []
+    for (let domain in this._state.profiles) {
+      result[++i] = this._state.profiles[domain];
+    }
+    return result
+  }
+
+  getProfile (domain) {
+    domain = toDomain(domain)
+    var profile = this._state.profiles[domain]
+    if (!profile) {
+      this._state.profiles[domain] = profile = new Schemas.Profile(null, 'dat://' + domain + '/profile.json')
+    }
+    return profile
   }
 }
 
@@ -203,8 +234,8 @@ class MicroblogAPI extends IndexAPI {
           if (!arr) {
             arr = this._state.threads[post.threadRoot] = []
           }
-          if (!arr.includes(post.getUrl())) {
-            arr.push(post.getUrl())
+          if (!arr.includes(post.url)) {
+            arr.push(post.url)
           }
         }
       }
@@ -297,7 +328,7 @@ class MicroblogAPI extends IndexAPI {
     var threadPostsByUrl = {}
     for (let post of threadPosts) {
       if (post) {
-        threadPostsByUrl[post.getUrl()] = post
+        threadPostsByUrl[post.url] = post
       }
     }
 
@@ -305,7 +336,7 @@ class MicroblogAPI extends IndexAPI {
     for (let post of threadPosts) {
       let parent = post.threadParent ? threadPostsByUrl[post.threadParent] : undefined
       post.parent = parent
-      post.root = threadRootUrl && post.getUrl() !== threadRootUrl ? threadPostsByUrl[threadRootUrl] : undefined
+      post.root = threadRootUrl && post.url !== threadRootUrl ? threadPostsByUrl[threadRootUrl] : undefined
       if (parent) {
         parent.replies = parent.replies || []
         parent.replies.push(post)
