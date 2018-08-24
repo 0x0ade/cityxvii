@@ -1,7 +1,7 @@
 /* globals DatArchive */
 
 import {newId} from './new-id.js'
-import {toUrl, toDomain, ensureFolderExists, ignoreNotFound} from './util.js'
+import {toUrl, toDomain, ensureFolderExists} from './util.js'
 import * as Schemas from './schemas.js'
 import {NotTheOwnerError} from './errors.js'
 
@@ -17,10 +17,6 @@ export class User extends DatArchive {
     this.microblog = new MicroblogAPI(this)
   }
 
-  getProfileUrl () {
-    return this.url + '/profile.json'
-  }
-
   async setup () {
     var info = await this.getInfo()
     if (!info.isOwner) {
@@ -32,7 +28,7 @@ export class User extends DatArchive {
   }
 
   getProfile () {
-    return new Schemas.Profile(profile, this.getProfileUrl())
+    return new Schemas.Profile(profile, this.url)
   }
 
   async setProfile (details) {
@@ -48,7 +44,7 @@ export class User extends DatArchive {
     }
 
     // write file
-    profile = new Schemas.Profile(profile, this.getProfileUrl())
+    profile = new Schemas.Profile(profile, this.url)
     await this.writeFile('/profile.json', JSON.stringify(profile))
   }
 

@@ -63,7 +63,7 @@ export class Index extends DatArchive {
       siteState = this._state.sites[domain] = {key: '', name: '', version: 0}
     }
     if (!profileState) {
-      profileState = this._state.profiles[domain] = new Schemas.Profile(null, 'dat://' + domain + '/profile.json')
+      profileState = this._state.profiles[domain] = new Schemas.Profile(null, domain)
     }
     
     var key = await DatArchive.resolveName(domain)
@@ -77,7 +77,7 @@ export class Index extends DatArchive {
         this.social.uncrawlSite(user)
       ])
       siteState = this._state.sites[domain] = {key, name: '', version: 0}
-      profileState = this._state.profiles[domain] = new Schemas.Profile(null, 'dat://' + domain + '/profile.json')
+      profileState = this._state.profiles[domain] = new Schemas.Profile(null, domain)
     }
 
     // index up to current version
@@ -130,19 +130,20 @@ export class Index extends DatArchive {
   }
 
   listProfiles () {
-    var i = -1;
+    var i = -1
     var result = []
     for (let domain in this._state.profiles) {
-      result[++i] = this._state.profiles[domain];
+      result[++i] = this._state.profiles[domain]
     }
     return result
   }
 
   getProfile (domain) {
     domain = toDomain(domain)
+    domain = ((domain in this._state.sites) ? this._state.sites[domain].key : null) || domain
     var profile = this._state.profiles[domain]
     if (!profile) {
-      this._state.profiles[domain] = profile = new Schemas.Profile(null, 'dat://' + domain + '/profile.json')
+      this._state.profiles[domain] = profile = new Schemas.Profile(null, domain)
     }
     return profile
   }
@@ -217,27 +218,9 @@ class MicroblogAPI extends IndexAPI {
         continue
       }
 
-      // fetch latest
-      let post = await user.microblog.get(filename)
-
       // feed index
       if (opts.indexes.microblog.feed) {
-        if (!post.threadRoot && !post.threadParent) { // root posts only
-          this._state.feed.push(Schemas.MicroblogIndex.postToFeedItem(post)) // add / readd
-        }
-      }
-
-      // threads index
-      if (opts.indexes.microblog.replies) {
-        if (post.threadRoot) {
-          let arr = this._state.threads[post.threadRoot]
-          if (!arr) {
-            arr = this._state.threads[post.threadRoot] = []
-          }
-          if (!arr.includes(post.url)) {
-            arr.push(post.url)
-          }
-        }
+        this._state.feed.push(Schemas.MicroblogIndex.postToFeedItem(user, filename)) // add / readd
       }
     }
     this._state.feed.sort((a, b) => b.createdAt - a.createdAt) // sort by timestamp

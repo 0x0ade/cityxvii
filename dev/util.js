@@ -13,6 +13,9 @@ export function toUrl (v) {
   if (v === window.location) {
     return v.toString()
   }
+  if (v instanceof URL) {
+    return v.toString()
+  }
   throw new InvalidURLError(v)
 }
 

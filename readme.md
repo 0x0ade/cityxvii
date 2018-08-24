@@ -47,8 +47,7 @@ await index.setup()
 await index.crawlSite(url, {
   indexes: {
     microblog: {
-      feed: true,
-      replies: true
+      feed: true
     },
     social: {
       follows: true
@@ -96,6 +95,7 @@ User information.
 |-|-|-|
 | `name` | string | The user's name. |
 | `bio` | string | A short description of the user. |
+| `avatar` | string | The user's avatar image path, if it isn't `/avatar.png`. |
 | `follows` | Array of ProfileFollow | The list of accounts that this user follows. |
 
 ### ProfileFollow
@@ -162,10 +162,11 @@ A feed-index pointer to a post.
 
 | field | type | description |
 |-|-|-|
+| `url` | string | The URL of the post. |
 | `author` | string | The domain name of the author. |
 | `filename` | string | The filename of the post. |
-| `createdAt` | number | The creation timestamp of the original post. |
-| `threadRoot` | string | If the post is a reply, this is the URL of the root post in the thread. |
+| `id` | number | The ID of the original post, which is also part of the filename. |
+| `numid` | number | The numeric ID of the original post. Newer posts always have higher numeric IDs. In the best case, this value is close to the creation timestamp of the original post. |
 
 ### SocialIndex
 

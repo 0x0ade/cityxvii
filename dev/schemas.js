@@ -1,7 +1,7 @@
 /* globals URL */
 
 import {JSONParseError} from './errors.js'
-import {ignoreNotFound} from './util.js'
+import {toUrl, toDomain, ignoreNotFound} from './util.js'
 
 // base class
 // 
@@ -34,18 +34,22 @@ class Schema {
     return new this.constructor(this._input, this._url)
   }
 
+  _fetch () {
+    return fetch(this._url).then(ignoreNotFound, ignoreNotFound).then(r => r ? r.json() : r)
+  }
+
   then (onFulfillment, onRejection) {
-    return fetch(this._url).then(ignoreNotFound, ignoreNotFound).then(r => r ? r.json() : r).then(input => {
+    return this._fetch().then(input => {
       this.update(input)
       let result = this._new()
       // Fetched data cannot be awaited in a loop.
       Object.defineProperty(result, '_source', {enumerable: false, value: this})
       Object.defineProperty(result, 'then', {enumerable: false, value: undefined})
       return result
-    }).then(onFulfillment, onRejection).catch(e => {
-      console.error(this.constructor, this._url);
-      throw e;
-    })
+    }).then(onFulfillment, onRejection)/*.catch(e => {
+      console.error(this.constructor, this._url)
+      throw e
+    })*/
   }
 
   catch (onRejection) {
@@ -92,11 +96,25 @@ function _get (obj, attr, type, fallback) {
 
 export class Profile extends Schema {
   constructor (input, meta) {
-    super(input, meta)
+    super(input, 'dat://' + toDomain(meta))
   }
 
-  getAvatarUrl () {
-    return this.url + '/' + this.avatar
+  async _fetch () {
+    let tryfetch = async (url) => {
+      try {
+        var r = await fetch(url)
+        if (r.ok) {
+          return r.json()
+        }
+      } catch (e) {
+        ignoreNotFound(e)
+      }
+      return null
+    }
+    
+    // First, try profile.json.
+    // If it cannot be fetched, fall back to portal.json (Rotonde).
+    return (await tryfetch(this._url + '/profile.json')) || (await tryfetch(this._url + '/portal.json'))
   }
 
   update (input) {
@@ -123,6 +141,10 @@ export class Profile extends Schema {
       }
     })
     return follows.filter(Boolean)
+  }
+
+  getAvatarUrl () {
+    return this.getOrigin() + '/' + this.avatar
   }
 }
 
@@ -184,7 +206,7 @@ export class CitizenIndex extends Schema {
       if (!profile || typeof profile !== 'object') continue
       if (typeof profile.name !== 'string') continue
       if (typeof profile.bio !== 'string') continue
-      res[domain] = new Profile(profile, 'dat://' + domain + '/profile.json')
+      res[domain] = new Profile(profile, domain)
     }
     return res
   }
@@ -236,12 +258,14 @@ export class MicroblogIndex extends Schema {
     return res
   }
 
-  static postToFeedItem (post) {
+  static postToFeedItem (user, filename) {
+    let id = filename.slice(0, -5)
     return {
-      author: post.getHostname(),
-      filename: post.getFilename(),
-      createdAt: post.createdAt,
-      threadRoot: post.threadRoot
+      url: `${user.url}/posts/${filename}`,
+      author: user.url,
+      filename: filename,
+      id: id,
+      numid: parseInt(id) || parseInt(id, 36),
     }
   }
 }
@@ -297,7 +321,6 @@ export class CrawlOpts extends Schema {
     this.indexes = this.get('indexes', 'object', {})
     this.indexes.microblog = _get(this.indexes, 'microblog', 'object', {})
     this.indexes.microblog.feed = _get(this.indexes.microblog, 'feed', 'boolean', true)
-    this.indexes.microblog.replies = _get(this.indexes.microblog, 'replies', 'boolean', true)
     this.indexes.social = _get(this.indexes, 'social', 'object', {})
     this.indexes.social.follows = _get(this.indexes.social, 'follows', 'boolean', true)
   }
