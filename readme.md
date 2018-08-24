@@ -122,6 +122,7 @@ User information.
 | `bio` | string | A short description of the user. |
 | `avatar` | string | The user's avatar image path, if it isn't `/avatar.png`. |
 | `follows` | Array of ProfileFollow | The list of accounts that this user follows. |
+| `timestampLast` | number | The time of the last profile activity. Defaults to the archive's `mtime` or 0. |
 
 ### ProfileFollow
 

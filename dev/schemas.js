@@ -2,6 +2,7 @@
 
 import {JSONParseError} from './errors.js'
 import {toUrl, toDomain, ignoreNotFound} from './util.js'
+import { User } from './user.js';
 
 // base class
 // 
@@ -21,7 +22,7 @@ class Schema {
     if (!url) {
       // URL-less data cannot be awaited.
       Object.defineProperty(this, 'then', {enumerable: false, value: undefined})
-      Object.defineProperty(this, '_fetched', {enumerable: false, configurable: true, value: true})
+      Object.defineProperty(this, 'isFetched', {enumerable: false, configurable: true, value: true})
     }
 
     this.update(input)
@@ -46,8 +47,8 @@ class Schema {
       // Fetched data cannot be awaited in a loop.
       Object.defineProperty(result, '_source', {enumerable: false, value: this})
       Object.defineProperty(result, 'then', {enumerable: false, value: undefined})
-      Object.defineProperty(this, '_fetched', {enumerable: false, configurable: true, value: true})
-      Object.defineProperty(result, '_fetched', {enumerable: false, configurable: true, value: true})
+      Object.defineProperty(this, 'isFetched', {enumerable: false, configurable: true, value: true})
+      Object.defineProperty(result, 'isFetched', {enumerable: false, configurable: true, value: true})
       return result
     }).then(onFulfillment, onRejection)/*.catch(e => {
       console.error(this.constructor, this._url)
@@ -61,10 +62,6 @@ class Schema {
 
   getSynced () {
     return this._source || this
-  }
-
-  isFetched () {
-    return this._fetched || false
   }
 
   get (attr, type, fallback) {
@@ -146,7 +143,14 @@ export class Profile extends Schema {
     
     // First, try profile.json.
     // If it cannot be fetched, fall back to portal.json (Rotonde).
-    return (await tryfetch(this._url + '/profile.json')) || (await tryfetch(this._url + '/portal.json'))
+    let res = (await tryfetch(this.getOrigin() + '/profile.json')) || (await tryfetch(this.getOrigin() + '/portal.json'))
+    
+    // If timestampLast isn't given, use mtime.
+    if (!res.timestampLast) {
+      res.timestampLast = (await new User(this.getOrigin()).getInfo()).mtime;
+    }
+    
+    return res;
   }
 
   update (input) {
@@ -157,6 +161,7 @@ export class Profile extends Schema {
     this.bio = this.get('bio', 'string', '')
     this.avatar = this.get('avatar', 'string', 'avatar.png')
     this.follows = Profile.toProfileFollows(this._input.follows)
+    this.timestampLast = this.get('timestampLast', 'number', 0)
   }
 
   static toProfileFollows (follows) {
