@@ -139,7 +139,7 @@ export class Index extends DatArchive {
 
   getCrawledSite (domain) {
     domain = toDomain(domain)
-    return (domain in this._state.sites) ? this._state.sites[domain] : {key: '', name: '', version: 0}
+    return (domain in this._state.sites) ? deepClone(this._state.sites[domain]) : {key: '', name: '', version: 0}
   }
 
   listProfiles () {
@@ -230,11 +230,14 @@ class MicroblogAPI extends IndexAPI {
       }
     }
 
+    var userFeed = this._state.userFeeds[domain] || []
+
     // read and index files
     // NOTE this is pretty lazy (filter out, re/add, sort) but I'm not going to optimize this until I need to -prf
     for (var filename in changesToIndex) {
       // remove existing
       this._state.feed = this._state.feed.filter(p => !(p.author === domain && p.filename === filename))
+      userFeed = userFeed.filter(p => !(p.author === domain && p.filename === filename))
       // TODO remove thread
 
       if (changesToIndex[filename].type === 'del') {
@@ -244,10 +247,17 @@ class MicroblogAPI extends IndexAPI {
 
       // feed index
       if (opts.indexes.microblog.feed) {
-        this._state.feed.push(Schemas.MicroblogIndex.postToFeedItem(domain, filename)) // add / readd
+        // add / readd
+        var item = Schemas.MicroblogIndex.postToFeedItem(domain, filename)
+        this._state.feed.push(item)
+        userFeed.push(item)
       }
     }
-    this._state.feed.sort((a, b) => b.createdAt - a.createdAt) // sort by timestamp
+
+    // sort by numid
+    this._state.feed.sort((a, b) => b.numid - a.numid)
+    userFeed.sort((a, b) => b.numid - a.numid)
+    this._state.userFeeds[domain] = userFeed
 
     // write updated state
     await this._save()
@@ -266,9 +276,9 @@ class MicroblogAPI extends IndexAPI {
 
   listFeed (query) {
     query = new Schemas.MicroblogIndexFeedQuery(query)
-    var {after, before, offset, limit, reverse} = query
+    var {author, after, before, offset, limit, reverse} = query
 
-    var results = this._state.feed.slice()
+    var results = (author ? this._state.userFeeds[toDomain(author)] || [] : this._state.feed).slice()
 
     if (before || after) {
       results = results.filter(meta => {

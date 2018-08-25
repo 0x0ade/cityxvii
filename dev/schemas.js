@@ -258,6 +258,7 @@ export class MicroblogIndex extends Schema {
     super.update(input)
 
     this.feed = MicroblogIndex.toFeed(this._input.feed)
+    this.userFeeds = MicroblogIndex.toUserFeeds(this._input.userFeeds)
   }
 
   static toFeed (feed) {
@@ -277,16 +278,14 @@ export class MicroblogIndex extends Schema {
     return feed.filter(Boolean)
   }
 
-  static toThreads (threads) {
-    if (!threads || typeof threads !== 'object' || Array.isArray(threads)) {
+  static toUserFeeds (feeds) {
+    if (!feeds || typeof feeds !== 'object' || Array.isArray(feeds)) {
       return {}
     }
 
     var res = {}
-    for (let url in threads) {
-      let thread = threads[url]
-      if (!thread || !Array.isArray(thread)) continue
-      res[url] = thread.filter(v => typeof v === 'string')
+    for (let domain in feeds) {
+      res[domain] = MicroblogIndex.toFeed(feeds[domain])
     }
     return res
   }
@@ -359,6 +358,7 @@ export class MicroblogIndexFeedQuery extends Schema {
   constructor (input) {
     super(input)
 
+    this.author = this.get('author', 'string', null)
     this.after = this.get('after', 'number', null)
     this.before = this.get('before', 'number', null)
     this.offset = this.get('offset', 'number', null)
