@@ -98,8 +98,11 @@ export class Index extends DatArchive {
     var {version} = await user.getInfo()
     var changes
     if (previousVersion === 0) {
-      // No information present. To speed things up, let's just readdir / recursively.
-      changes = (await user.readdir("/", {recursive: true})).map(path => ({path: '/' + path.replace(BACKSLASH_FILE_PATH_REGEX, '/'), type: "put"}))
+      // No information present. To speed things up, let's just readdir / and /posts/.
+      changes = [
+        ...(await user.readdir('/')),
+        ...(await user.readdir('/posts/')).map(path => 'posts/' + path)
+      ].map(path => ({path: '/' + path.replace(BACKSLASH_FILE_PATH_REGEX, '/'), type: 'put'}))
     } else {
       changes = await user.history({start: previousVersion, end: version + 1})
     }
@@ -349,7 +352,7 @@ class SocialAPI extends IndexAPI {
     // has the profile.json changed?
     var needsIndex = false
     for (let change of changes) {
-      if (change.path === '/profile.json') {
+      if (change.path === '/profile.json' || change.path === '/portal.json') {
         needsIndex = true
       }
     }

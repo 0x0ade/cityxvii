@@ -96,21 +96,21 @@ function _get (obj, attr, type, fallback) {
 }
 
 function _feedItem (obj) {
-  Object.defineProperty(obj, "url", {
+  Object.defineProperty(obj, 'url', {
     configurable: true,
     enumerable: false,
     get() {
       return `dat://${obj.author}/posts/${obj.filename}`
     }
   })
-  Object.defineProperty(obj, "id", {
+  Object.defineProperty(obj, 'id', {
     configurable: true,
     enumerable: false,
     get() {
       return obj.filename.slice(0, -5)
     }
   })
-  Object.defineProperty(obj, "numid", {
+  Object.defineProperty(obj, 'numid', {
     configurable: true,
     enumerable: false,
     get() {
