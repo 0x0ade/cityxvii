@@ -283,11 +283,6 @@ class MicroblogAPI extends IndexAPI {
     else if (offset) results = results.slice(offset)
     else if (limit) results = results.slice(0, limit)
 
-    // For compatibility when await listFeed is still lingering around anywhere.
-    let p = Promise.resolve(results)
-    results.then = (cb) => p.then(cb)
-    results.catch = (cb) => p.catch(cb)
-
     return results
   }
 
