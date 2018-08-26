@@ -98,11 +98,10 @@ export class Index extends DatArchive {
     var {version} = await user.getInfo()
     var changes
     if (previousVersion === 0) {
-      // No information present. To speed things up, let's just readdir / and /posts/.
-      changes = [
-        ...(await user.readdir('/')),
-        ...(await user.readdir('/posts/')).map(path => 'posts/' + path)
-      ].map(path => ({path: '/' + path.replace(BACKSLASH_FILE_PATH_REGEX, '/'), type: 'put'}))
+      // No information present. To speed things up, let's just readdir /posts/.
+      changes = await user.readdir('/posts/').catch(ignoreNotFound);
+      changes = !changes ? [] : changes.map(path => ({path: '/posts/' + path.replace(BACKSLASH_FILE_PATH_REGEX, '/'), type: 'put'}))
+      changes.push({path: '/profile.json', type: 'put'})
     } else {
       changes = await user.history({start: previousVersion, end: version + 1})
     }
