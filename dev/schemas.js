@@ -88,6 +88,20 @@ class Schema {
   get url () {
     return this._url ? this._url.toString() : ''
   }
+  set url (value) {
+    // Overwrite the url property and set _hasURL for toJSON.
+    Object.defineProperty(result, '_hasURL', {enumerable: false, configurable: false, value: true})
+    Object.defineProperty(result, 'url', {enumerable: true, configurable: true, value})
+  }
+
+  toJSON () {
+    var res = Object.assign({}, this._input, this)
+    // If the URL isn't part of the object, remove it from the result.
+    if ('url' in res && !('url' in this._input) && !this._hasURL) {
+      delete res.url
+    }
+    return res
+  }
 }
 
 function _get (obj, attr, type, fallback) {
@@ -199,6 +213,7 @@ export class MicroblogPost extends Schema {
     this.threadParent = this.get('threadParent', 'string', false)
     this.createdAt = this.get('createdAt', 'number', 0)
   }
+
 }
 
 export class CitizenIndex extends Schema {
@@ -259,6 +274,7 @@ export class MicroblogIndex extends Schema {
 
     this.feed = MicroblogIndex.toFeed(this._input.feed)
     this.userFeeds = MicroblogIndex.toUserFeeds(this._input.userFeeds)
+    this.posts = MicroblogIndex.toPosts(this._input.posts)
   }
 
   static toFeed (feed) {
@@ -286,6 +302,20 @@ export class MicroblogIndex extends Schema {
     var res = {}
     for (let domain in feeds) {
       res[domain] = MicroblogIndex.toFeed(feeds[domain])
+    }
+    return res
+  }
+
+  static toPosts (feed) {
+    if (!feed || typeof feed !== 'object' || Array.isArray(feed)) {
+      return {}
+    }
+
+    var res = {}
+    for (let url in feed) {
+      let post = feed[url]
+      if (!post || typeof post !== 'object') continue
+      res[url] = new MicroblogPost(post, url)
     }
     return res
   }

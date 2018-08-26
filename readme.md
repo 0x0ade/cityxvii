@@ -84,7 +84,7 @@ index.listProfiles()
 await index.microblog.reset() // can desync - reset index instead!
 
 index.microblog.listFeed({..})
-await index.microblog.getPost(url)
+(await) index.microblog.getPost(url)
 
 // social index
 

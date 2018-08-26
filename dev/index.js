@@ -298,14 +298,12 @@ class MicroblogAPI extends IndexAPI {
     return results
   }
 
-  async getPost (url, {allowNotFound} = {}) {
-    var urlp = new URL(toUrl(url))
-    var user = new User(urlp.origin)
-    var promise = user.microblog.get(urlp.pathname.split('/').pop())
-    if (allowNotFound) {
-      promise.catch(ignoreNotFound)
+  getPost (url) {
+    var post = this._state.posts[url]
+    if (!post || !post.url) {
+      this._state.posts[url] = post = new Schemas.MicroblogPost(null, url)
     }
-    return promise
+    return post
   }
 }
 
