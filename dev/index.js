@@ -15,6 +15,7 @@ export class Index extends DatArchive {
     super(toUrl(url))
 
     this._state = null
+    this._vstate = null // volatile state
     this.isEditable = false
     this.microblog = new MicroblogAPI(this)
     this.social = new SocialAPI(this)
@@ -28,6 +29,10 @@ export class Index extends DatArchive {
     var info = await this.getInfo()
     this.isEditable = info.isOwner
     await this._load()
+
+    this._vstate = {
+      watchers: {}
+    }
 
     if (this.isEditable) {
       await ensureFolderExists(this, '/index')
@@ -99,7 +104,7 @@ export class Index extends DatArchive {
     var changes
     if (previousVersion === 0) {
       // No information present. To speed things up, let's just readdir /posts/.
-      changes = await user.readdir('/posts/').catch(ignoreNotFound);
+      changes = await user.readdir('/posts/').catch(ignoreNotFound)
       changes = !changes ? [] : changes.map(path => ({path: '/posts/' + path.replace(BACKSLASH_FILE_PATH_REGEX, '/'), type: 'put'}))
       changes.push({path: '/profile.json', type: 'put'})
     } else {
@@ -116,6 +121,31 @@ export class Index extends DatArchive {
     // update crawl state
     this._state.sites[domain] = {key, version, name: profile.name || ''}
     this._state.profiles[domain] = profile.getSynced ? profile.getSynced() : profile
+
+    // If opts.live is set to true, listen to updates.
+    if (opts.live && !this._vstate.watchers[domain]) {
+      var watcher = user.watch()
+      this._vstate.watchers[domain] = watcher
+      watcher.addEventListener('invalidated', ({path}) => {
+        if (path.startsWith("/index/")) {
+          return
+        }
+        // Download and cache the update in the background.
+        user.download(path)
+      })
+      watcher.addEventListener('changed', async ({path}) => {
+        if (path.startsWith("/index/")) {
+          return
+        }
+        // Let's just lazily recrawl.
+        await this.crawlSite(url, opts)
+        // this.dispatchEvent(new Event('indexes-live-updated'))
+        // Note: A bug in the webview-preload's EventTarget implementation prevents ^ from working.
+        // event.target is readonly and cannot be set by dispatchEvent..?!
+        this.dispatchEvent({type: 'indexes-live-updated'})
+      })
+    }
+
     await this._save()
   }
 
@@ -132,6 +162,14 @@ export class Index extends DatArchive {
     // update crawl state
     delete this._state.sites[domain]
     delete this._state.profiles[domain]
+    
+    // Close any watchers.
+    var watcher = this._vstate.watchers[domain]
+    if (watcher) {
+      watcher.close()
+      delete this._vstate.watchers[domain]
+    }
+
     await this._save()
   }
 

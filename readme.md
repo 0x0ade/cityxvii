@@ -65,6 +65,7 @@ await index.reset()
 
 await index.crawlSite(url, {
   indexes: {
+    live: false,
     microblog: {
       feed: true
     },

@@ -377,6 +377,7 @@ export class CrawlOpts extends Schema {
     super(input)
 
     this.indexes = this.get('indexes', 'object', {})
+    this.live = this.get('live', 'boolean', false)
     this.indexes.microblog = _get(this.indexes, 'microblog', 'object', {})
     this.indexes.microblog.feed = _get(this.indexes.microblog, 'feed', 'boolean', true)
     this.indexes.social = _get(this.indexes, 'social', 'object', {})
