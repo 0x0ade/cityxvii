@@ -43,8 +43,8 @@ export class User extends DatArchive {
       profile[k] = details[k]
     }
 
+    profile.timestampLast = Date.now()
     // write file
-    profile = new Schemas.Profile(profile, this.url)
     await this.writeFile('/profile.json', JSON.stringify(profile))
   }
 
@@ -91,6 +91,12 @@ export class User extends DatArchive {
 
 // internal methods
 // =
+
+function _fixFilename (filename) {
+  if (!filename.endsWith('.json'))
+    filename += '.json'
+  return filename
+}
 
 class UserAPI {
   constructor (user) {
@@ -156,6 +162,7 @@ class MicroblogAPI extends UserAPI {
 
   async get (filename) {
     // read file
+    filename = _fixFilename(filename)
 
     // var post = await this.user.readFile('/posts/' + filename)
     // return new Schemas.MicroblogPost(post, this.getPostUrl(filename))
@@ -183,6 +190,7 @@ class MicroblogAPI extends UserAPI {
   }
 
   async edit (filename, details) {
+    filename = _fixFilename(filename)
     massagePostDetails(details)
 
     // lock region
@@ -203,6 +211,7 @@ class MicroblogAPI extends UserAPI {
 
   async remove (filename) {
     // delete file
+    filename = _fixFilename(filename)
     await this.user.unlink('/posts/' + filename)
   }
 }

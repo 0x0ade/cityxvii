@@ -102,13 +102,14 @@ export class Index extends DatArchive {
     var previousVersion = siteState && typeof siteState.version === 'number' ? siteState.version : 0
     var {version} = await user.getInfo()
     var changes
-    if (previousVersion === 0) {
-      // No information present. To speed things up, let's just readdir /posts/.
+    if (previousVersion > 0) {
+      changes = await user.history({start: previousVersion, end: version + 1}).catch(e => null)
+    }
+    if (!changes) {
+      // No information present, let's just readdir /posts/.
       changes = await user.readdir('/posts/').catch(ignoreNotFound)
       changes = !changes ? [] : changes.map(path => ({path: '/posts/' + path.replace(BACKSLASH_FILE_PATH_REGEX, '/'), type: 'put'}))
       changes.push({path: '/profile.json', type: 'put'})
-    } else {
-      changes = await user.history({start: previousVersion, end: version + 1})
     }
     await Promise.all([
       this.microblog.crawlSite(user, changes, opts),
@@ -126,23 +127,21 @@ export class Index extends DatArchive {
     if (opts.live && !this._vstate.watchers[domain]) {
       var watcher = user.watch()
       this._vstate.watchers[domain] = watcher
-      watcher.addEventListener('invalidated', ({path}) => {
-        if (path.startsWith("/index/")) {
+      watcher.addEventListener('invalidated', async ({path}) => {
+        if (path.startsWith('/index/')) {
           return
         }
         // Download and cache the update in the background.
-        user.download(path)
+        await user.download(path)
       })
       watcher.addEventListener('changed', async ({path}) => {
-        if (path.startsWith("/index/")) {
+        if (path.startsWith('/index/')) {
           return
         }
         // Let's just lazily recrawl.
         await this.crawlSite(url, opts)
-        // this.dispatchEvent(new Event('indexes-live-updated'))
-        // Note: A bug in the webview-preload's EventTarget implementation prevents ^ from working.
-        // event.target is readonly and cannot be set by dispatchEvent..?!
-        this.dispatchEvent({type: 'indexes-live-updated'})
+        // Note: See above why new Event doesn't work.
+        this.dispatchEvent({type: 'indexes-live-updated', url: url + path})
       })
     }
 
