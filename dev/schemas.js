@@ -124,11 +124,16 @@ function _feedItem (obj) {
       return obj.filename.slice(0, -5)
     }
   })
+  var lastId, lastNumId
   Object.defineProperty(obj, 'numid', {
     configurable: true,
     enumerable: false,
     get() {
-      return parseInt(obj.id) || parseInt(obj.id, 36)
+      // Don't parse the ID if it can be avoided.
+      if (obj.id === lastId)
+        return lastNumId
+      lastId = obj.id
+      return lastNumId = (parseInt(obj.id) || parseInt(obj.id, 36))
     }
   })
   return obj
