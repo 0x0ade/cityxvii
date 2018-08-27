@@ -31,7 +31,8 @@ export class Index extends DatArchive {
     await this._load()
 
     this._vstate = {
-      watchers: {}
+      watchers: {},
+      writing: {}
     }
 
     if (this.isEditable) {
@@ -64,10 +65,21 @@ export class Index extends DatArchive {
   }
 
   async _save () {
+    return this._writeFileLate('/index/citizen.json', JSON.stringify(this._state))    
+  }
+
+  async _writeFileLate (path, data, opts) {
+    // TODO: Make this resolve when the timeout resolves? Or pretend like nothing happened?
     if (!this.isEditable) {
       return
     }
-    return this.writeFile('/index/citizen.json', JSON.stringify(this._state))    
+    let timeout = this._vstate.writing[path]
+    if (timeout) {
+      clearTimeout(timeout)
+    }
+    this._vstate.writing[path] = setTimeout(async () => {
+      await this.writeFile(path, data, opts)
+    }, 5000) // TODO: Arbitrary write delay!
   }
 
   async crawlSite (url, opts) {
@@ -251,10 +263,7 @@ class MicroblogAPI extends IndexAPI {
   }
 
   async _save () {
-    if (!this.archive.isEditable) {
-      return
-    }
-    return this.archive.writeFile('/index/citizen/microblog.json', JSON.stringify(this._state))    
+    return this.archive._writeFileLate('/index/citizen/microblog.json', JSON.stringify(this._state))    
   }
 
   async crawlSite (user, changes, opts) {
@@ -374,10 +383,7 @@ class SocialAPI extends IndexAPI {
   }
 
   async _save () {
-    if (!this.archive.isEditable) {
-      return
-    }
-    return this.archive.writeFile('/index/citizen/social.json', JSON.stringify(this._state))    
+    return this.archive._writeFileLate('/index/citizen/social.json', JSON.stringify(this._state))    
   }
 
   async crawlSite (user, changes, opts) {
