@@ -137,24 +137,31 @@ export class Index extends DatArchive {
 
     // If opts.live is set to true, listen to updates.
     if (opts.live && !this._vstate.watchers[domain]) {
-      var watcher = user.watch()
+      var watcher;
+      try {
+        watcher = user.watch()
+      } catch (e) {
+        this._vstate.watchers[domain] = e
+      }
       this._vstate.watchers[domain] = watcher
-      watcher.addEventListener('invalidated', async ({path}) => {
-        if (path.startsWith('/index/')) {
-          return
-        }
-        // Download and cache the update in the background.
-        await user.download(path)
-      })
-      watcher.addEventListener('changed', async ({path}) => {
-        if (path.startsWith('/index/')) {
-          return
-        }
-        // Let's just lazily recrawl.
-        await this.crawlSite(url, opts)
-        // Note: See above why new Event doesn't work.
-        this.dispatchEvent({type: 'indexes-live-updated', url: url + path})
-      })
+      if (watcher && !(watcher instanceof Error)) {
+        watcher.addEventListener('invalidated', async ({path}) => {
+          if (path.startsWith('/index/')) {
+            return
+          }
+          // Download and cache the update in the background.
+          await user.download(path)
+        })
+        watcher.addEventListener('changed', async ({path}) => {
+          if (path.startsWith('/index/')) {
+            return
+          }
+          // Let's just lazily recrawl.
+          await this.crawlSite(url, opts)
+          // Note: See above why new Event doesn't work.
+          this.dispatchEvent({type: 'indexes-live-updated', url: url + path})
+        })
+      }
     }
 
     await this._save()
@@ -177,7 +184,8 @@ export class Index extends DatArchive {
     // Close any watchers.
     var watcher = this._vstate.watchers[domain]
     if (watcher) {
-      watcher.close()
+      if (!(watcher instanceof Error))
+        watcher.close()
       delete this._vstate.watchers[domain]
     }
 

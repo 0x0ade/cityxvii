@@ -4,7 +4,7 @@ A rotonde-centric fork of the Citizen social web API for beaker/dat applications
 
 ```js
 // import the current dev build
-import * as Citizen from 'dat://cityxvii.hashbase.io/dev/api.js'
+import * as Citizen from '//cityxvii.hashbase.io/dev/api.js'
 
 // Citizen.User
 // Citizen.Index

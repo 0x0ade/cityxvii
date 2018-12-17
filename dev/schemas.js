@@ -165,7 +165,7 @@ export class Profile extends Schema {
     let res = (await tryfetch(this.getOrigin() + '/profile.json')) || (await tryfetch(this.getOrigin() + '/portal.json'))
     
     // If timestampLast isn't given, use mtime.
-    if (!res.timestampLast) {
+    if (!res.notFound && !res.timestampLast) {
       res.timestampLast = (await new User(this.getOrigin()).getInfo()).mtime
     }
     
