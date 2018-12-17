@@ -43,7 +43,6 @@ export class User extends DatArchive {
       profile[k] = details[k]
     }
 
-    profile.timestampLast = Date.now()
     // write file
     await this.writeFile('/profile.json', JSON.stringify(profile))
   }
